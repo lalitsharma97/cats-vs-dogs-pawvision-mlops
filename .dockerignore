@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.github
+
+# DVC
+.dvc
+.dvcignore
+
+# Data
+data/raw/*
+data/processed/*
+
+# Models (will be copied separately)
+models/checkpoints/*
+
+# MLflow
+mlruns/
+
+# Notebooks
+notebooks/*.ipynb_checkpoints
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.venv
+venv/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+AGENTS.md
+
+# Development files
+setup.py
+tests/
