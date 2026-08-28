@@ -154,6 +154,7 @@ The GitHub Actions pipeline uses Docker commands for compatibility with the GitH
 
 - Docker Buildx setup for GitHub Actions
 - Docker login and push to GitHub Container Registry
+- Modern Docker Compose: `docker compose` (without hyphen)
 - Docker Compose for deployment in CI/CD
 
 **Note**: All Docker files (Dockerfile, docker-compose.yml) are compatible with both Docker and Podman.
@@ -181,7 +182,8 @@ kind delete cluster --name cats-dogs-cluster
 ```bash
 # Deploy with Docker Compose (GitHub Actions)
 cd deployment
-docker-compose up -d
+docker compose pull
+docker compose up -d
 
 # Or with Podman Compose (local)
 cd deployment
