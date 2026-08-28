@@ -292,16 +292,21 @@ python scripts/simulate_requests.py --requests 20
 
 ### Deployment
 ```bash
-# Build container image
+# Build container image (local: use Podman)
 podman build -t cats-dogs-classifier:latest .
 
-# Run with Docker Compose
+# Run with Docker Compose (GitHub Actions: use Docker)
 cd deployment
-podman-compose up -d
+docker-compose up -d
 
 # Deploy to Kubernetes
 kubectl apply -f deployment/kubernetes/
 ```
+
+**Container Runtime:**
+- **Local Development:** Podman (as Docker is not available locally)
+- **GitHub Actions CI/CD:** Docker (for compatibility with GitHub Actions environment)
+- **Compatibility:** All Docker files are compatible with both Docker and Podman
 
 ## Monitoring and Observability
 

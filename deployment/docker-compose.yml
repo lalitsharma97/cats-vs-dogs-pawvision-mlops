@@ -1,4 +1,4 @@
-# Use with podman-compose: podman-compose up -d
+# Use with docker-compose (GitHub Actions) or podman-compose (local development)
 version: '3.8'
 
 services:

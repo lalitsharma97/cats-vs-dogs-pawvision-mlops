@@ -56,42 +56,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Podman
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
       - name: Create dummy model
         run: |
           python scripts/create_dummy_model.py
 
-      - name: Build image with Podman
+      - name: Build image with Docker
         run: |
-          podman build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
 
       - name: Test container locally
         run: |
-          podman run -d -p 8000:8000 --name test-api ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker run -d -p 8000:8000 --name test-api ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           sleep 10
-          podman exec test-api curl -f http://localhost:8000/health || exit 1
-          podman stop test-api
-          podman rm test-api
+          docker exec test-api curl -f http://localhost:8000/health || exit 1
+          docker stop test-api
+          docker rm test-api
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Push image with Podman
+      - name: Push image with Docker
         if: github.event_name != 'pull_request'
         run: |
-          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Image tag with commit SHA
         if: github.event_name != 'pull_request'
         run: |
-          podman tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          podman push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   deploy:
     needs: build
@@ -136,26 +134,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Podman
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman podman-compose
-
       - name: Pull latest image
         run: |
-          podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Deploy with Docker Compose
         run: |
           cd deployment
-          podman-compose pull
-          podman-compose up -d
+          docker-compose pull
+          docker-compose up -d
 
       - name: Wait for service to be ready
         run: |
           cd deployment
           sleep 30
-          podman-compose ps
+          docker-compose ps
 
       - name: Run smoke tests
         run: |
@@ -166,7 +159,7 @@ jobs:
         if: always()
         run: |
           cd deployment
-          podman-compose down
+          docker-compose down
 
   notify:
     needs: [deploy, deploy-docker-compose]

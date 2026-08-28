@@ -154,9 +154,9 @@ For detailed documentation of the complete MLOps pipeline, see [FINAL_SUBMISSION
 - Environment setup instructions
 - Monitoring and observability guide
 
-## Podman Usage
+## Podman Usage (Local Development)
 
-This project uses Podman as the container runtime instead of Docker. All Docker files (Dockerfile, docker-compose.yml) are compatible with Podman.
+This project uses Podman as the container runtime for local development. All Docker files (Dockerfile, docker-compose.yml) are compatible with Podman. For GitHub Actions CI/CD, Docker commands are used.
 
 ### Local Development with Podman
 ```bash
@@ -169,3 +169,6 @@ podman run -p 8000:8000 cats-dogs-classifier:latest
 # Use docker-compose with podman-compose
 podman-compose up -d
 ```
+
+### GitHub Actions CI/CD (Docker)
+The GitHub Actions pipeline uses Docker commands for building and pushing containers to the GitHub Container Registry. This ensures compatibility with the GitHub Actions environment.
