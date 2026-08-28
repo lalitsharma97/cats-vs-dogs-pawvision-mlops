@@ -1,4 +1,5 @@
 # Use with docker-compose (GitHub Actions) or podman-compose (local development)
+# IMPORTANT: GitHub Actions uses Docker, local development uses Podman
 version: '3.8'
 
 services:

@@ -193,9 +193,12 @@ podman-compose up -d
   5. **Notify**: Deployment status notification
 
 ### Container Registry
-- **Registry**: GitHub Container Registry (ghcr.io)
+- **Registry**: GitHub Container Registry (ghcr.io) - May require repository settings
 - **Image**: ghcr.io/lalitsharma97/cats-vs-dogs-pawvision-mlops
 - **Tags**: latest, commit SHA
+- **Note**: GHCR push may fail if not enabled for the repository; pipeline continues with error handling
+- **Alternative**: Can be configured for Docker Hub or local registry if needed
+- **Setup**: Enable GitHub Container Registry in repository settings if GHCR push is required
 
 ## Testing Results
 
