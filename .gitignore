@@ -37,7 +37,8 @@ ENV/
 .ipynb_checkpoints
 
 # MLflow
-mlruns/
+mlruns/*
+!mlruns/.gitkeep
 
 # Data (tracked by DVC)
 data/raw/*
@@ -61,7 +62,7 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
+!logs/.gitkeep
 
 # Environment variables
 .env
