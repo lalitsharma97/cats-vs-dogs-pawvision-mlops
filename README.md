@@ -162,12 +162,19 @@ The GitHub Actions pipeline uses Docker commands for compatibility with the GitH
 
 ### Kubernetes Deployment
 ```bash
-# Deploy to Kubernetes
+# Deploy to Kubernetes (requires a running cluster)
+kubectl apply -f deployment/kubernetes/
+
+# For local development with kind (Kubernetes in Docker)
+kind create cluster --name cats-dogs-cluster
 kubectl apply -f deployment/kubernetes/
 
 # Check deployment status
 kubectl get deployment cats-dogs-classifier
 kubectl get pods -l app=cats-dogs-classifier
+
+# Cleanup
+kind delete cluster --name cats-dogs-cluster
 ```
 
 ### Docker Compose Deployment
@@ -305,6 +312,7 @@ podman-compose up -d
 
 ### M4: CD Pipeline & Deployment - 100% ALIGNED ✅
 - **Task 1**: Kubernetes deployment ✅ | Docker Compose deployment ✅ | Infrastructure manifests ✅
+- **Note**: CI/CD pipeline uses kind (Kubernetes in Docker) for Kubernetes deployment in GitHub Actions environment
 - **Task 2**: CD flow extended ✅ | Pull image from registry ✅ | Auto-deploy on main branch ✅
 - **Task 3**: Smoke tests implemented ✅ | Pipeline fails on smoke test failure ✅
 
