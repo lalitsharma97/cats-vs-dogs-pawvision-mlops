@@ -3,15 +3,19 @@ version: '3.8'
 
 services:
   cats-dogs-classifier:
-    image: docker.io/your-username/cats-dogs-classifier:latest
+    image: ghcr.io/lalitsharma97/cats-vs-dogs-pawvision-mlops:latest
     container_name: cats-dogs-classifier
     ports:
       - "8000:8000"
     environment:
-      - MODEL_PATH=/app/models/saved_models/
+      - MODEL_PATH=/app/models/saved_models/best_model.pt
+      - CONFIG_PATH=/app/configs/model_config.yaml
       - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
     volumes:
-      - ./models/saved_models:/app/models/saved_models
+      - ./models/saved_models:/app/models/saved_models:ro
+      - ./configs:/app/configs:ro
+      - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -19,3 +23,30 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    networks:
+      - cats-dogs-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  cats-dogs-network:
+    driver: bridge
+
+volumes:
+  logs:

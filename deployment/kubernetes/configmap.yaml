@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cats-dogs-classifier-config
+  labels:
+    app: cats-dogs-classifier
+data:
+  MODEL_PATH: "/app/models/saved_models/best_model.pt"
+  CONFIG_PATH: "/app/configs/model_config.yaml"
+  LOG_LEVEL: "INFO"
+  PYTHONUNBUFFERED: "1"

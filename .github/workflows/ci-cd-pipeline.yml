@@ -112,9 +112,69 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           kubectl apply -f deployment/kubernetes/
-          kubectl rollout status deployment/cats-dogs-classifier
+          kubectl rollout status deployment/cats-dogs-classifier --timeout=300s
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl wait --for=condition=available --timeout=300s deployment/cats-dogs-classifier
+
+      - name: Get deployment status
+        run: |
+          kubectl get deployment cats-dogs-classifier
+          kubectl get pods -l app=cats-dogs-classifier
 
       - name: Run smoke tests
         run: |
           python scripts/create_test_image.py
           python deployment/smoke_test.py
+
+  deploy-docker-compose:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman podman-compose
+
+      - name: Pull latest image
+        run: |
+          podman pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy with Docker Compose
+        run: |
+          cd deployment
+          podman-compose pull
+          podman-compose up -d
+
+      - name: Wait for service to be ready
+        run: |
+          cd deployment
+          sleep 30
+          podman-compose ps
+
+      - name: Run smoke tests
+        run: |
+          python scripts/create_test_image.py
+          python deployment/smoke_test.py
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd deployment
+          podman-compose down
+
+  notify:
+    needs: [deploy, deploy-docker-compose]
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+      - name: Deployment status
+        run: |
+          echo "Deployment completed"
+          echo "Kubernetes deployment: ${{ needs.deploy.result }}"
+          echo "Docker Compose deployment: ${{ needs.deploy-docker-compose.result }}"

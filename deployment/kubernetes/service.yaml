@@ -4,12 +4,19 @@ metadata:
   name: cats-dogs-classifier-service
   labels:
     app: cats-dogs-classifier
+    version: v1
+  annotations:
+    description: "Cats vs Dogs Classification API Service"
 spec:
   type: LoadBalancer
   selector:
     app: cats-dogs-classifier
   ports:
-  - protocol: TCP
+  - name: http
+    protocol: TCP
     port: 80
     targetPort: 8000
-    name: http
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
