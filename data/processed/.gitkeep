@@ -1,0 +1,2 @@
+# This directory will contain pre-processed 224x224 RGB images
+# Files will be tracked with DVC

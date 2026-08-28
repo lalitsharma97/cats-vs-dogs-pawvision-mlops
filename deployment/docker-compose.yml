@@ -1,0 +1,21 @@
+# Use with podman-compose: podman-compose up -d
+version: '3.8'
+
+services:
+  cats-dogs-classifier:
+    image: docker.io/your-username/cats-dogs-classifier:latest
+    container_name: cats-dogs-classifier
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/models/saved_models/
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./models/saved_models:/app/models/saved_models
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

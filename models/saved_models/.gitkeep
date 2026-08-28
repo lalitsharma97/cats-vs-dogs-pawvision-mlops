@@ -1,0 +1,2 @@
+# This directory will contain trained model artifacts (.pkl, .pt, .h5)
+# Files will be tracked with DVC
