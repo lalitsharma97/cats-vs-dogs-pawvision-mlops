@@ -196,7 +196,7 @@ jobs:
         run: |
           cd deployment
           sleep 30
-          docker-compose ps
+          docker compose ps
 
       - name: Run smoke tests
         run: |
