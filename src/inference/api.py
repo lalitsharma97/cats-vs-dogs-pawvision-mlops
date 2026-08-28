@@ -12,14 +12,16 @@ import yaml
 import torch
 import numpy as np
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
-from prometheus_client import Counter, Histogram, generate_latest
+from prometheus_client import Counter, Histogram, Gauge, generate_latest
 from fastapi.responses import Response
 import time
+import json
 
 from src.models.architecture import get_model
 from src.utils.logging import setup_logger
+from src.monitoring.performance_tracker import performance_tracker
 
 # Set up logging
 logger = setup_logger("inference_api")
@@ -35,6 +37,10 @@ app = FastAPI(
 request_count = Counter('api_requests_total', 'Total API requests', ['endpoint', 'method'])
 request_latency = Histogram('api_request_latency_seconds', 'API request latency')
 prediction_count = Counter('predictions_total', 'Total predictions made', ['class_name'])
+error_count = Counter('api_errors_total', 'Total API errors', ['endpoint', 'error_type'])
+active_requests = Gauge('api_active_requests', 'Number of active requests')
+model_inference_time = Histogram('model_inference_time_seconds', 'Model inference time')
+preprocessing_time = Histogram('preprocessing_time_seconds', 'Image preprocessing time')
 
 # Global variables for model
 model = None
@@ -116,6 +122,42 @@ async def startup_event():
     logger.info("Inference service ready")
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests with detailed information"""
+    start_time = time.time()
+    active_requests.inc()
+    
+    # Log request details
+    logger.info(f"Incoming request: {request.method} {request.url.path}")
+    
+    try:
+        response = await call_next(request)
+        
+        # Calculate duration
+        duration = time.time() - start_time
+        
+        # Log response details (excluding sensitive data)
+        logger.info(
+            f"Request completed: {request.method} {request.url.path} "
+            f"Status: {response.status_code} Duration: {duration:.3f}s"
+        )
+        
+        return response
+        
+    except Exception as e:
+        # Log errors
+        duration = time.time() - start_time
+        logger.error(
+            f"Request failed: {request.method} {request.url.path} "
+            f"Error: {str(e)} Duration: {duration:.3f}s"
+        )
+        error_count.labels(endpoint=request.url.path, error_type=type(e).__name__).inc()
+        raise
+    finally:
+        active_requests.dec()
+
+
 @app.get("/health")
 async def health_check():
     """
@@ -172,21 +214,28 @@ async def predict(
         
         # Validate file type
         if not file.content_type or not file.content_type.startswith('image/'):
+            error_count.labels(endpoint='/predict', error_type='invalid_file_type').inc()
             raise HTTPException(
                 status_code=400, 
                 detail="Invalid file type. Please upload an image file."
             )
         
-        # Preprocess image
+        # Preprocess image with timing
+        preprocess_start = time.time()
         image_tensor = preprocess_image(image_bytes)
         image_tensor = image_tensor.to(device)
+        preprocess_duration = time.time() - preprocess_start
+        preprocessing_time.observe(preprocess_duration)
         
-        # Make prediction
+        # Make prediction with timing
+        inference_start = time.time()
         with torch.no_grad():
             outputs = model(image_tensor)
             probabilities = torch.softmax(outputs, dim=1)
             predicted_class_idx = torch.argmax(probabilities, dim=1).item()
             confidence = probabilities[0][predicted_class_idx].item()
+        inference_duration = time.time() - inference_start
+        model_inference_time.observe(inference_duration)
         
         # Get class name and probabilities
         predicted_class = class_names[predicted_class_idx]
@@ -199,11 +248,31 @@ async def predict(
         prediction_count.labels(class_name=predicted_class).inc()
         request_latency.observe(time.time() - start_time)
         
-        # Log prediction
-        logger.info(
-            f"Prediction: {predicted_class} (confidence: {confidence:.4f}), "
-            f"probabilities: {class_probabilities}"
+        # Record prediction for performance tracking
+        performance_tracker.record_prediction(
+            predicted_class=predicted_class,
+            confidence=confidence,
+            class_probabilities=class_probabilities,
+            processing_time={
+                "preprocessing": round(preprocess_duration, 3),
+                "inference": round(inference_duration, 3),
+                "total": round(time.time() - start_time, 3)
+            },
+            metadata={
+                "filename": file.filename,
+                "file_size": len(image_bytes)
+            }
         )
+        
+        # Log prediction with detailed metrics
+        logger.info(
+            f"Prediction completed: {predicted_class} (confidence: {confidence:.4f}), "
+            f"preprocessing: {preprocess_duration:.3f}s, inference: {inference_duration:.3f}s, "
+            f"total: {time.time() - start_time:.3f}s"
+        )
+        
+        # Log probabilities (safe for monitoring)
+        logger.debug(f"Class probabilities: {class_probabilities}")
         
         # Return prediction result
         result = {
@@ -211,7 +280,12 @@ async def predict(
             "predicted_class": predicted_class,
             "confidence": confidence,
             "class_probabilities": class_probabilities,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "processing_time": {
+                "preprocessing": round(preprocess_duration, 3),
+                "inference": round(inference_duration, 3),
+                "total": round(time.time() - start_time, 3)
+            }
         }
         
         return result
@@ -219,6 +293,7 @@ async def predict(
     except HTTPException:
         raise
     except Exception as e:
+        error_count.labels(endpoint='/predict', error_type=type(e).__name__).inc()
         logger.error(f"Error during prediction: {e}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
@@ -237,9 +312,65 @@ async def root():
             "health": "/health",
             "predict": "/predict",
             "metrics": "/metrics",
-            "docs": "/docs"
+            "docs": "/docs",
+            "performance": "/performance"
         }
     }
+
+
+@app.get("/performance")
+async def performance_stats():
+    """
+    Performance statistics endpoint
+    Returns aggregated performance metrics
+    """
+    request_count.labels(endpoint='/performance', method='GET').inc()
+    
+    # Get performance metrics from tracker
+    performance_summary = performance_tracker.get_summary()
+    
+    stats = {
+        "endpoint": "/performance",
+        "timestamp": datetime.utcnow().isoformat(),
+        "performance_summary": performance_summary,
+        "metrics_available": {
+            "api_requests_total": "Total API requests by endpoint and method",
+            "api_request_latency_seconds": "Request latency distribution",
+            "predictions_total": "Total predictions by class",
+            "api_errors_total": "Total errors by endpoint and type",
+            "api_active_requests": "Currently active requests",
+            "model_inference_time_seconds": "Model inference time distribution",
+            "preprocessing_time_seconds": "Image preprocessing time distribution"
+        },
+        "monitoring": {
+            "prometheus_metrics": "/metrics",
+            "logs": "Available in application logs",
+            "health_check": "/health",
+            "performance_report": "Generated automatically in logs/performance_report.json"
+        }
+    }
+    
+    logger.info("Performance statistics requested")
+    return stats
+
+
+@app.get("/performance/report")
+async def get_performance_report():
+    """
+    Generate and return a detailed performance report
+    """
+    request_count.labels(endpoint='/performance/report', method='GET').inc()
+    
+    try:
+        report = performance_tracker.export_report()
+        if report:
+            logger.info("Performance report generated")
+            return report
+        else:
+            raise HTTPException(status_code=500, detail="Could not generate performance report")
+    except Exception as e:
+        logger.error(f"Error generating performance report: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
 
 
 if __name__ == "__main__":
