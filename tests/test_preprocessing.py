@@ -5,10 +5,12 @@ Unit tests for data preprocessing functions
 import pytest
 import numpy as np
 import os
+import sys
 import tempfile
 from PIL import Image
-import sys
-sys.path.append('..')
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.data.preprocessing import DataPreprocessor
 
@@ -114,6 +116,38 @@ class TestDataPreprocessor:
             
             assert stats['train']['cat'] == 2
             assert stats['train']['dog'] == 1
+    
+    def test_preprocess_image_normalization(self, preprocessor, sample_image):
+        """Test that image normalization works correctly"""
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+            sample_image.save(f.name)
+            temp_path = f.name
+        
+        try:
+            processed = preprocessor.load_and_preprocess_image(temp_path)
+            
+            # Test that values are properly normalized to [0, 1]
+            assert processed.min() >= 0.0, "Minimum value should be >= 0"
+            assert processed.max() <= 1.0, "Maximum value should be <= 1"
+            
+            # Test that not all values are the same (normalization didn't flatten everything)
+            assert processed.std() > 0, "Processed image should have some variance"
+        finally:
+            os.unlink(temp_path)
+    
+    def test_preprocess_image_dimensions(self, preprocessor, sample_image):
+        """Test that output dimensions are exactly as specified"""
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+            sample_image.save(f.name)
+            temp_path = f.name
+        
+        try:
+            processed = preprocessor.load_and_preprocess_image(temp_path)
+            
+            # Test exact dimensions
+            assert processed.shape == (224, 224, 3), f"Expected shape (224, 224, 3), got {processed.shape}"
+        finally:
+            os.unlink(temp_path)
 
 
 if __name__ == "__main__":

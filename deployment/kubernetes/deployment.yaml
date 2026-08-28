@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: classifier
-        image: docker.io/your-username/cats-dogs-classifier:latest
+        image: IMAGE_PLACEHOLDER
         imagePullPolicy: Always
         ports:
         - containerPort: 8000

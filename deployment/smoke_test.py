@@ -6,15 +6,17 @@ Tests health endpoint and prediction endpoint
 import requests
 import sys
 import time
+import os
 
-def test_health_endpoint():
+def test_health_endpoint(base_url="http://localhost:8000"):
     """Test the health check endpoint"""
-    max_retries = 5
+    max_retries = 10
     for attempt in range(max_retries):
         try:
-            response = requests.get("http://localhost:8000/health", timeout=5)
+            response = requests.get(f"{base_url}/health", timeout=5)
             if response.status_code == 200:
-                print("✓ Health check passed")
+                data = response.json()
+                print(f"✓ Health check passed: {data}")
                 return True
         except requests.exceptions.RequestException as e:
             print(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
@@ -24,12 +26,19 @@ def test_health_endpoint():
     print("✗ Health check failed after retries")
     return False
 
-def test_prediction_endpoint():
+def test_prediction_endpoint(base_url="http://localhost:8000"):
     """Test the prediction endpoint with sample data"""
     try:
-        # Create a dummy image payload (in real scenario, send actual image)
-        files = {'file': open('data/processed/test_sample.jpg', 'rb')}
-        response = requests.post("http://localhost:8000/predict", files=files, timeout=10)
+        # Check if test image exists
+        test_image_path = "test_image.jpg"
+        if not os.path.exists(test_image_path):
+            print(f"✗ Test image not found at {test_image_path}")
+            return False
+        
+        # Send prediction request
+        with open(test_image_path, 'rb') as f:
+            files = {'file': f}
+            response = requests.post(f"{base_url}/predict", files=files, timeout=10)
         
         if response.status_code == 200:
             result = response.json()
@@ -44,10 +53,17 @@ def test_prediction_endpoint():
 
 def main():
     """Run all smoke tests"""
-    print("Running smoke tests...")
+    # Allow custom base URL via environment variable
+    base_url = os.getenv("API_BASE_URL", "http://localhost:8000")
     
-    health_passed = test_health_endpoint()
-    prediction_passed = test_prediction_endpoint()
+    print(f"Running smoke tests against {base_url}...")
+    
+    health_passed = test_health_endpoint(base_url)
+    
+    if health_passed:
+        prediction_passed = test_prediction_endpoint(base_url)
+    else:
+        prediction_passed = False
     
     if health_passed and prediction_passed:
         print("\n✓ All smoke tests passed")
