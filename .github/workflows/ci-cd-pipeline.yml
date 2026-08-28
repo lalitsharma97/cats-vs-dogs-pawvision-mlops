@@ -182,14 +182,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Pull latest image
+      - name: Create dummy model
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "Image not found in registry, using locally built image"
+          python scripts/create_dummy_model.py
 
       - name: Deploy with Docker Compose
         run: |
           cd deployment
-          docker compose pull || echo "Using locally built image"
+          docker compose build || echo "Build failed, using existing image"
           docker compose up -d
 
       - name: Wait for service to be ready

@@ -182,11 +182,12 @@ kind delete cluster --name cats-dogs-cluster
 ```bash
 # Deploy with Docker Compose (GitHub Actions)
 cd deployment
-docker compose pull
+docker compose build
 docker compose up -d
 
 # Or with Podman Compose (local)
 cd deployment
+podman-compose build
 podman-compose up -d
 ```
 

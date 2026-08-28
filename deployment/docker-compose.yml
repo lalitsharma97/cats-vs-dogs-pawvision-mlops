@@ -1,12 +1,14 @@
 # Use with docker compose (GitHub Actions) or podman-compose (local development)
 # IMPORTANT: GitHub Actions uses Docker, local development uses Podman
 # NOTE: Modern Docker uses 'docker compose' (without hyphen), older versions use 'docker-compose'
-version: '3.8'
 
 services:
   cats-dogs-classifier:
-    image: ghcr.io/lalitsharma97/cats-vs-dogs-pawvision-mlops:latest
+    image: cats-dogs-classifier:latest
     container_name: cats-dogs-classifier
+    build:
+      context: ..
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
