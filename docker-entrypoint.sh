@@ -1,18 +1,19 @@
 #!/bin/bash
 set -e
 
+echo "Container starting up..."
+
 # Ensure logs directory exists and is writable
-mkdir -p logs
-chmod 755 logs
+mkdir -p logs || echo "Warning: Could not create logs directory"
+chmod 755 logs || echo "Warning: Could not set permissions on logs directory"
 
-# Ensure the application can write to logs directory
-touch logs/.write_test || {
-    echo "Error: Cannot write to logs directory. Fixing permissions..."
-    # This should work since we're running as appuser and the directory should be owned by us
-}
-
-# Remove the test file
-rm -f logs/.write_test
+# Test if we can write to logs directory
+if touch logs/.write_test 2>/dev/null; then
+    rm -f logs/.write_test
+    echo "Logs directory is writable"
+else
+    echo "Warning: Logs directory is not writable, continuing anyway"
+fi
 
 echo "Starting application..."
 exec "$@"

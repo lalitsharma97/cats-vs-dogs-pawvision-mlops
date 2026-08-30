@@ -46,6 +46,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 ENV MODEL_PATH=/app/models/saved_models/best_model.pt
 ENV CONFIG_PATH=/app/configs/model_config.yaml
 ENV LOG_LEVEL=INFO

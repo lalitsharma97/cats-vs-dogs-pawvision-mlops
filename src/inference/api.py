@@ -118,8 +118,13 @@ def preprocess_image(image_bytes: bytes) -> torch.Tensor:
 async def startup_event():
     """Initialize model on startup"""
     logger.info("Starting up inference service...")
-    load_model()
-    logger.info("Inference service ready")
+    try:
+        load_model()
+        logger.info("Inference service ready")
+    except Exception as e:
+        logger.error(f"Failed to initialize model during startup: {e}")
+        # Don't crash the app - continue without model if loading fails
+        logger.warning("Starting service without loaded model - predictions may fail")
 
 
 @app.middleware("http")

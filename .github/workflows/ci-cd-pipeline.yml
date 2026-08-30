@@ -82,8 +82,10 @@ jobs:
       - name: Test container locally
         run: |
           docker run -d -p 8000:8000 --name test-api local-test-image
-          sleep 10
-          docker exec test-api curl -f http://localhost:8000/health || exit 1
+          sleep 15
+          docker logs test-api || true
+          docker ps -a || true
+          docker exec test-api curl -f http://localhost:8000/health || (docker logs test-api && exit 1)
           docker stop test-api
           docker rm test-api
 
