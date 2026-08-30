@@ -37,8 +37,7 @@ ENV/
 .ipynb_checkpoints
 
 # MLflow
-mlruns/.trash/
-mlruns/models/
+mlruns/*/
 !mlruns/.gitkeep
 
 # Data
