@@ -40,9 +40,8 @@ ENV/
 mlruns/*/
 !mlruns/.gitkeep
 
-# Data
+# Data (tracked by DVC)
 data/processed/*
-data/raw/*
 !data/processed/.gitkeep
 
 # Models
@@ -50,6 +49,10 @@ models/checkpoints/*
 models/saved_models/*.pt
 models/saved_models/*.pth
 !models/checkpoints/.gitkeep
+
+# DVC
+.dvc/cache
+.dvc/tmp
 
 # OS
 .DS_Store
