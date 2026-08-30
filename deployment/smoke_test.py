@@ -55,14 +55,14 @@ def test_prediction_endpoint(base_url: str = "http://localhost:8000") -> bool:
     """
     try:
         # Check if test image exists
-        test_image_path = "test_image.jpg"
+        test_image_path = "/tmp/test_image.jpg"
         if not os.path.exists(test_image_path):
             print(f"[FAIL] Test image not found at {test_image_path}")
             return False
         
         # Send prediction request
         with open(test_image_path, 'rb') as f:
-            files = {'file': f}
+            files = {'file': (test_image_path, f, 'image/jpeg')}
             response = requests.post(f"{base_url}/predict", files=files, timeout=10)
         
         if response.status_code == 200:

@@ -37,24 +37,20 @@ ENV/
 .ipynb_checkpoints
 
 # MLflow
-mlruns/*
+mlruns/.trash/
+mlruns/models/
 !mlruns/.gitkeep
 
-# Data (tracked by DVC)
-data/raw/*
+# Data
 data/processed/*
-!data/raw/.gitkeep
+data/raw/*
 !data/processed/.gitkeep
 
 # Models
-models/saved_models/*
 models/checkpoints/*
-!models/saved_models/.gitkeep
+models/saved_models/*.pt
+models/saved_models/*.pth
 !models/checkpoints/.gitkeep
-
-# DVC
-.dvc/cache
-.dvc/tmp
 
 # OS
 .DS_Store

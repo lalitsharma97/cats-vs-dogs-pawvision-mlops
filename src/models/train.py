@@ -12,12 +12,11 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix, classification_report
-import mlflow
-import mlflow.pytorch
 from datetime import datetime
 
 from src.models.architecture import get_model
 from src.data.data_loader import get_data_loaders
+from src.monitoring.mlflow_tracker import MLflowTracker
 
 
 class Trainer:
@@ -54,8 +53,7 @@ class Trainer:
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         
         # MLflow setup
-        self.experiment_name = "cats_vs_dogs_classification"
-        mlflow.set_experiment(self.experiment_name)
+        self.mlflow_tracker = MLflowTracker(experiment_name="cats_vs_dogs_classification")
         
     def train_epoch(self, train_loader: DataLoader) -> tuple:
         """
@@ -144,81 +142,83 @@ class Trainer:
             val_loader: Validation data loader
         """
         # Start MLflow run
-        run_name = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.mlflow_tracker.start_run()
         
-        with mlflow.start_run(run_name=run_name):
-            # Log parameters
-            mlflow.log_params({
-                "learning_rate": self.learning_rate,
-                "batch_size": self.batch_size,
-                "epochs": self.epochs,
-                "optimizer": "adam",
-                "loss_function": "cross_entropy"
-            })
+        # Log initial parameters
+        self.mlflow_tracker.log_params({
+            "learning_rate": self.learning_rate,
+            "batch_size": self.batch_size,
+            "epochs": self.epochs,
+            "optimizer": "adam",
+            "loss_function": "cross_entropy"
+        })
+        
+        # Log model info
+        model_info = self.model.get_model_info()
+        self.mlflow_tracker.log_params({
+            "model_name": model_info['model_name'],
+            "total_parameters": model_info['total_parameters']
+        })
+        
+        # Log dataset info
+        dataset_info = {
+            "total": len(train_loader.dataset) + len(val_loader.dataset),
+            "train": len(train_loader.dataset),
+            "val": len(val_loader.dataset),
+            "test": 0,
+            "num_classes": 2
+        }
+        self.mlflow_tracker.log_dataset_info(dataset_info)
+        
+        best_val_accuracy = 0.0
+        
+        for epoch in range(self.epochs):
+            print(f"\nEpoch {epoch + 1}/{self.epochs}")
+            print("-" * 50)
             
-            # Log model info
-            model_info = self.model.get_model_info()
-            mlflow.log_params({
-                "model_name": model_info['model_name'],
-                "total_parameters": model_info['total_parameters']
-            })
+            # Train
+            train_loss, train_accuracy = self.train_epoch(train_loader)
+            print(f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%")
             
-            best_val_accuracy = 0.0
+            # Validate
+            val_loss, val_accuracy, val_labels, val_predictions = self.validate(val_loader)
+            print(f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
             
-            for epoch in range(self.epochs):
-                print(f"\nEpoch {epoch + 1}/{self.epochs}")
-                print("-" * 50)
-                
-                # Train
-                train_loss, train_accuracy = self.train_epoch(train_loader)
-                print(f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}%")
-                
-                # Validate
-                val_loss, val_accuracy, val_labels, val_predictions = self.validate(val_loader)
-                print(f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
-                
-                # Log metrics
-                mlflow.log_metrics({
-                    "train_loss": train_loss,
-                    "train_accuracy": train_accuracy,
-                    "val_loss": val_loss,
-                    "val_accuracy": val_accuracy
-                }, step=epoch)
-                
-                # Save best model
-                if val_accuracy > best_val_accuracy:
-                    best_val_accuracy = val_accuracy
-                    self.save_model("best_model")
-                    mlflow.log_metric("best_val_accuracy", best_val_accuracy)
-                
-                # Log confusion matrix at end of training
-                if epoch == self.epochs - 1:
-                    cm = confusion_matrix(val_labels, val_predictions)
-                    print("Confusion Matrix:")
-                    print(cm)
-                    
-                    # Log classification report
-                    report = classification_report(
-                        val_labels, val_predictions, 
-                        target_names=['cat', 'dog'],
-                        output_dict=True
-                    )
-                    mlflow.log_metrics({
-                        "val_precision_cat": report['cat']['precision'],
-                        "val_recall_cat": report['cat']['recall'],
-                        "val_f1_cat": report['cat']['f1-score'],
-                        "val_precision_dog": report['dog']['precision'],
-                        "val_recall_dog": report['dog']['recall'],
-                        "val_f1_dog": report['dog']['f1-score']
-                    })
+            # Log metrics
+            self.mlflow_tracker.log_metrics({
+                "train_loss": train_loss,
+                "train_accuracy": train_accuracy,
+                "val_loss": val_loss,
+                "val_accuracy": val_accuracy
+            }, step=epoch)
             
-            print(f"\nTraining completed. Best validation accuracy: {best_val_accuracy:.2f}%")
+            # Save best model
+            if val_accuracy > best_val_accuracy:
+                best_val_accuracy = val_accuracy
+                self.save_model("best_model")
+                self.mlflow_tracker.log_metrics({"best_val_accuracy": best_val_accuracy})
             
-            # Log the best model
-            mlflow.pytorch.log_model(self.model, "model")
-            
-            # Save final model
-            self.save_model("final_model")
+            # Log confusion matrix at end of training
+            if epoch == self.epochs - 1:
+                self.mlflow_tracker.log_confusion_matrix(
+                    val_labels, val_predictions, 
+                    class_names=['cat', 'dog']
+                )
+        
+        print(f"\nTraining completed. Best validation accuracy: {best_val_accuracy:.2f}%")
+        
+        # Log the best model
+        self.mlflow_tracker.log_model(self.model, "model")
+        
+        # Log artifacts
+        self.mlflow_tracker.log_artifact("configs/model_config.yaml")
+        self.mlflow_tracker.log_artifact("requirements.txt")
+        
+        # Save final model
+        self.save_model("final_model")
+        
+        # End MLflow run
+        self.mlflow_tracker.end_run()
     
     def save_model(self, model_name: str):
         """
