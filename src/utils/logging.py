@@ -19,7 +19,11 @@ def setup_logger(name: str = "mlops_pipeline", log_level: str = "INFO") -> loggi
         Configured logger instance
     """
     # Create logs directory if it doesn't exist
-    os.makedirs("logs", exist_ok=True)
+    try:
+        os.makedirs("logs", exist_ok=True)
+    except Exception as e:
+        # If we can't create logs directory, we'll still work with console logging
+        print(f"Warning: Could not create logs directory: {e}")
     
     # Create logger
     logger = logging.getLogger(name)

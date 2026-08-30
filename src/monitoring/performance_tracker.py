@@ -43,6 +43,7 @@ class PerformanceTracker:
                 logger.info(f"Loaded existing performance data from {self.storage_path}")
         except Exception as e:
             logger.warning(f"Could not load performance data: {e}")
+            # Continue with empty data if loading fails
     
     def _save_data(self):
         """Save performance data to storage"""
@@ -53,6 +54,7 @@ class PerformanceTracker:
             logger.info(f"Saved performance data to {self.storage_path}")
         except Exception as e:
             logger.error(f"Could not save performance data: {e}")
+            # Don't crash the application if we can't save performance data
     
     def record_prediction(
         self,
@@ -225,7 +227,8 @@ class PerformanceTracker:
             return report
         except Exception as e:
             logger.error(f"Could not export performance report: {e}")
-            return None
+            # Return the report in memory even if we can't save it
+            return report
     
     def clear_old_data(self, keep_last_n: int = 1000):
         """
