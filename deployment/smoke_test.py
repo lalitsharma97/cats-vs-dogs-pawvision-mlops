@@ -9,6 +9,8 @@ import time
 import os
 import json
 from typing import Dict, Any
+from PIL import Image
+import numpy as np
 
 def test_health_endpoint(base_url: str = "http://localhost:8000") -> bool:
     """
@@ -54,11 +56,20 @@ def test_prediction_endpoint(base_url: str = "http://localhost:8000") -> bool:
         True if prediction test passes, False otherwise
     """
     try:
-        # Check if test image exists
-        test_image_path = "/tmp/test_image.jpg"
+        # Check if test image exists (use local file for compatibility)
+        test_image_path = "test_image.jpg"
         if not os.path.exists(test_image_path):
-            print(f"[FAIL] Test image not found at {test_image_path}")
-            return False
+            print(f"[INFO] Test image not found at {test_image_path}")
+            print(f"[INFO] Creating test image...")
+            # Create test image
+            try:
+                image_array = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
+                image = Image.fromarray(image_array)
+                image.save(test_image_path)
+                print(f"[INFO] Test image created at {test_image_path}")
+            except Exception as e:
+                print(f"[FAIL] Could not create test image: {e}")
+                return False
         
         # Send prediction request
         with open(test_image_path, 'rb') as f:

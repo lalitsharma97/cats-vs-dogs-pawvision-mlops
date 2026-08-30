@@ -58,6 +58,9 @@ models/saved_models/*.pth
 .DS_Store
 Thumbs.db
 
+# Test files
+test_image.jpg
+
 # Logs
 *.log
 !logs/.gitkeep
