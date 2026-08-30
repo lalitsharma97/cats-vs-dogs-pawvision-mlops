@@ -35,7 +35,7 @@ class Trainer:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Using device: {self.device}")
         
-        # Initialize model
+        # Initialize model (use improved CNN)
         self.model = get_model("cnn", config_path).to(self.device)
         
         # Print model info
@@ -50,7 +50,12 @@ class Trainer:
         
         # Loss and optimizer
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
+        
+        # Learning rate scheduler
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, mode='max', factor=0.5, patience=3, verbose=True
+        )
         
         # MLflow setup
         self.mlflow_tracker = MLflowTracker(experiment_name="cats_vs_dogs_classification")
@@ -141,34 +146,35 @@ class Trainer:
             train_loader: Training data loader
             val_loader: Validation data loader
         """
-        # Start MLflow run
-        self.mlflow_tracker.start_run()
-        
-        # Log initial parameters
-        self.mlflow_tracker.log_params({
-            "learning_rate": self.learning_rate,
-            "batch_size": self.batch_size,
-            "epochs": self.epochs,
-            "optimizer": "adam",
-            "loss_function": "cross_entropy"
-        })
-        
-        # Log model info
-        model_info = self.model.get_model_info()
-        self.mlflow_tracker.log_params({
-            "model_name": model_info['model_name'],
-            "total_parameters": model_info['total_parameters']
-        })
-        
-        # Log dataset info
-        dataset_info = {
-            "total": len(train_loader.dataset) + len(val_loader.dataset),
-            "train": len(train_loader.dataset),
-            "val": len(val_loader.dataset),
-            "test": 0,
-            "num_classes": 2
-        }
-        self.mlflow_tracker.log_dataset_info(dataset_info)
+        # Start MLflow run if available
+        if self.mlflow_tracker:
+            self.mlflow_tracker.start_run()
+            
+            # Log initial parameters
+            self.mlflow_tracker.log_params({
+                "learning_rate": self.learning_rate,
+                "batch_size": self.batch_size,
+                "epochs": self.epochs,
+                "optimizer": "adam",
+                "loss_function": "cross_entropy"
+            })
+            
+            # Log model info
+            model_info = self.model.get_model_info()
+            self.mlflow_tracker.log_params({
+                "model_name": model_info['model_name'],
+                "total_parameters": model_info['total_parameters']
+            })
+            
+            # Log dataset info
+            dataset_info = {
+                "total": len(train_loader.dataset) + len(val_loader.dataset),
+                "train": len(train_loader.dataset),
+                "val": len(val_loader.dataset),
+                "test": 0,
+                "num_classes": 2
+            }
+            self.mlflow_tracker.log_dataset_info(dataset_info)
         
         best_val_accuracy = 0.0
         
@@ -184,22 +190,27 @@ class Trainer:
             val_loss, val_accuracy, val_labels, val_predictions = self.validate(val_loader)
             print(f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%")
             
-            # Log metrics
-            self.mlflow_tracker.log_metrics({
-                "train_loss": train_loss,
-                "train_accuracy": train_accuracy,
-                "val_loss": val_loss,
-                "val_accuracy": val_accuracy
-            }, step=epoch)
+            # Log metrics if MLflow available
+            if self.mlflow_tracker:
+                self.mlflow_tracker.log_metrics({
+                    "train_loss": train_loss,
+                    "train_accuracy": train_accuracy,
+                    "val_loss": val_loss,
+                    "val_accuracy": val_accuracy
+                }, step=epoch)
+            
+            # Step scheduler based on validation accuracy
+            self.scheduler.step(val_accuracy)
             
             # Save best model
             if val_accuracy > best_val_accuracy:
                 best_val_accuracy = val_accuracy
                 self.save_model("best_model")
-                self.mlflow_tracker.log_metrics({"best_val_accuracy": best_val_accuracy})
+                if self.mlflow_tracker:
+                    self.mlflow_tracker.log_metrics({"best_val_accuracy": best_val_accuracy})
             
-            # Log confusion matrix at end of training
-            if epoch == self.epochs - 1:
+            # Log confusion matrix at end of training if MLflow available
+            if epoch == self.epochs - 1 and self.mlflow_tracker:
                 self.mlflow_tracker.log_confusion_matrix(
                     val_labels, val_predictions, 
                     class_names=['cat', 'dog']
@@ -207,18 +218,19 @@ class Trainer:
         
         print(f"\nTraining completed. Best validation accuracy: {best_val_accuracy:.2f}%")
         
-        # Log the best model
-        self.mlflow_tracker.log_model(self.model, "model")
-        
-        # Log artifacts
-        self.mlflow_tracker.log_artifact("configs/model_config.yaml")
-        self.mlflow_tracker.log_artifact("requirements.txt")
+        # Log the best model if MLflow available
+        if self.mlflow_tracker:
+            self.mlflow_tracker.log_model(self.model, "model")
+            
+            # Log artifacts
+            self.mlflow_tracker.log_artifact("configs/model_config.yaml")
+            self.mlflow_tracker.log_artifact("requirements.txt")
+            
+            # End MLflow run
+            self.mlflow_tracker.end_run()
         
         # Save final model
         self.save_model("final_model")
-        
-        # End MLflow run
-        self.mlflow_tracker.end_run()
     
     def save_model(self, model_name: str):
         """

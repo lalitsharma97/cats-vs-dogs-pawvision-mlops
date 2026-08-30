@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CollectorRegistry
 from fastapi.responses import Response
 import time
 import json
@@ -33,14 +33,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Prometheus metrics
-request_count = Counter('api_requests_total', 'Total API requests', ['endpoint', 'method'])
-request_latency = Histogram('api_request_latency_seconds', 'API request latency')
-prediction_count = Counter('predictions_total', 'Total predictions made', ['class_name'])
-error_count = Counter('api_errors_total', 'Total API errors', ['endpoint', 'error_type'])
-active_requests = Gauge('api_active_requests', 'Number of active requests')
-model_inference_time = Histogram('model_inference_time_seconds', 'Model inference time')
-preprocessing_time = Histogram('preprocessing_time_seconds', 'Image preprocessing time')
+# Prometheus metrics (using multiprocess mode for Windows compatibility)
+from prometheus_client import CollectorRegistry, Counter, Histogram, Gauge
+
+registry = CollectorRegistry()
+request_count = Counter('api_requests_total', 'Total API requests', ['endpoint', 'method'], registry=registry)
+request_latency = Histogram('api_request_latency_seconds', 'API request latency', registry=registry)
+prediction_count = Counter('predictions_total', 'Total predictions made', ['class_name'], registry=registry)
+error_count = Counter('api_errors_total', 'Total API errors', ['endpoint', 'error_type'], registry=registry)
+active_requests = Gauge('api_active_requests', 'Number of active requests', registry=registry)
+model_inference_time = Histogram('model_inference_time_seconds', 'Model inference time', registry=registry)
+preprocessing_time = Histogram('preprocessing_time_seconds', 'Image preprocessing time', registry=registry)
 
 # Global variables for model
 model = None
@@ -193,7 +196,7 @@ async def metrics():
         Prometheus metrics in text format
     """
     request_count.labels(endpoint='/metrics', method='GET').inc()
-    return Response(generate_latest(), media_type="text/plain")
+    return Response(generate_latest(registry), media_type="text/plain")
 
 
 @app.post("/predict")
@@ -381,11 +384,11 @@ async def get_performance_report():
 if __name__ == "__main__":
     import uvicorn
     
-    # Run the API server
+    # Run the API server (no reload for Windows compatibility)
     uvicorn.run(
-        "src.inference.api:app",
+        app,
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=False,
         log_level="info"
     )

@@ -94,8 +94,9 @@ def get_data_loaders(config_path: str = "configs/model_config.yaml") -> Tuple[Da
         train_transform = transforms.Compose([
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomRotation(degrees=15),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+            transforms.RandomErasing(p=0.2, scale=(0.02, 0.1)),
         ])
     else:
         train_transform = None
@@ -110,24 +111,24 @@ def get_data_loaders(config_path: str = "configs/model_config.yaml") -> Tuple[Da
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2,
-        pin_memory=True
+        num_workers=0,  # Set to 0 for Windows compatibility
+        pin_memory=False
     )
     
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=2,
-        pin_memory=True
+        num_workers=0,  # Set to 0 for Windows compatibility
+        pin_memory=False
     )
     
     test_loader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=2,
-        pin_memory=True
+        num_workers=0,  # Set to 0 for Windows compatibility
+        pin_memory=False
     )
     
     return train_loader, val_loader, test_loader

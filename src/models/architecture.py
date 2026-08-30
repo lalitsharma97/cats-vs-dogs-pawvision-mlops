@@ -1,6 +1,6 @@
 """
 CNN model architecture for Cats vs Dogs binary classification
-Implements a baseline CNN model
+Implements an improved CNN model with better architecture
 """
 
 import torch
@@ -10,7 +10,7 @@ import yaml
 
 
 class BaselineCNN(nn.Module):
-    """Baseline CNN for binary image classification"""
+    """Improved CNN for binary image classification with deeper architecture"""
     
     def __init__(self, config_path: str = "configs/model_config.yaml"):
         """
@@ -27,7 +27,7 @@ class BaselineCNN(nn.Module):
         input_size = config['model']['input_size']  # [224, 224, 3]
         num_classes = config['model']['num_classes']
         
-        # Convolutional layers
+        # Convolutional layers - slightly deeper but manageable
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
@@ -43,13 +43,14 @@ class BaselineCNN(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         
         # Dropout
-        self.dropout = nn.Dropout(0.5)
+        self.dropout1 = nn.Dropout(0.3)
+        self.dropout2 = nn.Dropout(0.4)
         
         # Fully connected layers
         # After 4 pooling layers: 224 -> 112 -> 56 -> 28 -> 14
         self.fc1 = nn.Linear(256 * 14 * 14, 512)
-        self.fc2 = nn.Linear(512, 128)
-        self.fc3 = nn.Linear(128, num_classes)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, num_classes)
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -89,11 +90,11 @@ class BaselineCNN(nn.Module):
         x = x.view(x.size(0), -1)
         
         # Fully connected layers
-        x = self.dropout(x)
+        x = self.dropout1(x)
         x = self.fc1(x)
         x = F.relu(x)
         
-        x = self.dropout(x)
+        x = self.dropout2(x)
         x = self.fc2(x)
         x = F.relu(x)
         
