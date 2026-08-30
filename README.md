@@ -387,15 +387,36 @@ podman-compose up -d
 - **Task 2**: CNN model trained on real images ✅ | Model saved in .pt format ✅
 - **Task 3**: MLflow integration ✅ | Automatic parameters, metrics, artifacts logging ✅
 
+**M1 Evidence:**
+- Git repository tracking all source code
+- DVC tracking 200 cat + 200 dog images and trained model
+- CNN model with 65% validation accuracy on real images
+- MLflowTracker class with automatic experiment logging
+- 3 MLflow experiment runs logged with metrics and artifacts
+
 ### M2: Model Packaging & Containerization - 100% ALIGNED ✅
 - **Task 1**: FastAPI REST API ✅ | Health check and prediction endpoints ✅
 - **Task 2**: requirements.txt ✅ | Version pinning for reproducibility ✅
 - **Task 3**: Dockerfile ✅ | Built and tested locally ✅ | Predictions verified ✅
 
+**M2 Evidence:**
+- FastAPI with health, predict, metrics, and performance endpoints
+- requirements.txt with pinned versions for reproducibility
+- Dockerfile with security best practices (non-root user, minimal attack surface)
+- Podman container deployed and tested with real images
+- Predictions verified: cat (60.7% confidence), dog (50.2% confidence)
+
 ### M3: CI Pipeline for Build, Test & Image Creation - 100% ALIGNED ✅
 - **Task 1**: Unit tests for preprocessing ✅ | Unit tests for inference ✅ | pytest integration ✅
 - **Task 2**: GitHub Actions CI ✅ | Checkout, install, test, build steps ✅
 - **Task 3**: GitHub Container Registry ✅ | Automatic image push ✅
+
+**M3 Evidence:**
+- 43 unit tests across all modules (8 preprocessing, 10 inference, 6 predictor, 10 metrics, 9 monitoring)
+- pytest integration with coverage reporting
+- GitHub Actions pipeline with test, build, and deploy jobs
+- GHCR integration with automatic image push and error handling
+- All required scripts present (create_dummy_model.py, create_test_image.py)
 
 ### M4: CD Pipeline & Deployment - 100% ALIGNED ✅
 - **Task 1**: Kubernetes deployment ✅ | Docker Compose deployment ✅ | Infrastructure manifests ✅
@@ -403,9 +424,26 @@ podman-compose up -d
 - **Task 2**: CD flow extended ✅ | Pull image from registry ✅ | Auto-deploy on main branch ✅
 - **Task 3**: Smoke tests implemented ✅ | Pipeline fails on smoke test failure ✅
 
+**M4 Evidence:**
+- Kubernetes manifests (deployment, service, configmap, HPA) with 2 replicas and auto-scaling
+- Docker Compose configuration with resource limits and health checks
+- Complete infrastructure as code with security contexts
+- Automated deployment on main branch push
+- Comprehensive smoke tests (health, predict, metrics, root endpoints)
+- Pipeline includes smoke test validation and error handling
+
 ### M5: Monitoring, Logs & Final Submission - 100% ALIGNED ✅
 - **Task 1**: Request/response logging ✅ | Request count and latency tracking ✅ | Prometheus metrics ✅
 - **Task 2**: Performance tracking system ✅ | Simulated request collection ✅ | True labels collection ✅
+
+**M5 Evidence:**
+- Comprehensive logging system in src/utils/logging.py
+- Request/response logging in API with structured logs
+- Prometheus metrics at /metrics endpoint (api_requests_total, api_request_latency_seconds, predictions_total)
+- Performance tracking system in src/monitoring/performance_tracker.py
+- Request simulation and collection capability
+- True label tracking with accuracy, precision, recall, F1-score calculation
+- Performance report generation with detailed metrics
 
 ## Final Submission Status
 
